@@ -1,0 +1,271 @@
+pipeline {
+    agent {
+        kubernetes {
+            label 'slave'
+            namespace 'jenkins'
+            defaultContainer 'jnlp'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: slave
+  labels:
+    name: slave
+spec:
+  activeDeadlineSeconds: 600
+  nodeSelector:
+    kubernetes.io/hostname: ${NODE}
+  containers:
+  - name: jnlp
+    image: harbor.mgcorp.co/devops/ihemingway-jenkins-slave-w-docker:latest
+    tty: true
+    SecurityContext: privileged
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docksock
+  - name: php72
+    image: php:7.2-cli-alpine
+    command:
+    - cat
+    tty: true
+  - name: php72apache
+    image: php:7.2-apache
+    command:
+    - cat
+    tty: true
+  - name: node
+    image: node:8.15.1-alpine
+    command:
+    - cat
+    tty: true
+  - name: selenium-chrome
+    image: selenium/standalone-chrome
+  - name: nginx
+    image: nginx:alpine
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: docksock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
+    environment {
+        PRODUCT = "cpasites"
+        GIT_URL1 = "ssh://git@stash.mgcorp.co:7999/jenkt/xmpl-api-backend.git"
+        GIT_URL2 = "ssh://git@stash.mgcorp.co:7999/jenkt/xmpl-api-client.git"
+        WS1 = "/home/jenkins/xmpl-api-backend"
+        WS2 = "/home/jenkins/xmpl-api-client"
+        VAULT_ADDR = "https://mtl-devops-vault.mgcorp.co:8200"
+        TEAMS_HOOK = "https://outlook.office.com/webhook/ea64b24e-111b-4b31-b1c4-ed67ce8c9ef4@8901d9c6-8b0c-4459-8f7a-df56f23ef9f9/JenkinsCI/24f71ab16f7f4f63a08b76b45c5ab4e0/acc9e43c-a995-47e2-b550-5a5aa2568437"
+        DEPLOYCONFIG = "kube-deploy.yaml"
+        NODE = "${params.NODE}"
+        BRANCH = "${params.BRANCH}"
+        ENVIRONMENT = "${params.ENVIRONMENT}"
+        DEPLOY = "${params.DEPLOY}"
+    }
+    stages {
+        stage("Set up environment") {
+            parallel {
+                stage("Pull Backend") {
+                    steps{
+                        ws(WS1){
+                            checkout(
+                                [$class: 'GitSCM',
+                                branches: [[name: "${BRANCH}"]],
+                                doGenerateSubmoduleConfigurations: false,
+                                extensions: [[$class: 'CloneOption', depth: 1, noTags: true, reference: '', shallow: true]],
+                                submoduleCfg: [],
+                                userRemoteConfigs: [[credentialsId: 'StashKey', url: "${GIT_URL1}"]]
+                                ]
+                            )
+                        }
+                    }
+                }
+                stage("Pull Client") {
+                    steps{
+                        ws(WS2){
+                            checkout(
+                                [$class: 'GitSCM',
+                                branches: [[name: "${BRANCH}"]],
+                                doGenerateSubmoduleConfigurations: false,
+                                extensions: [[$class: 'CloneOption', depth: 1, noTags: true, reference: '', shallow: true]],
+                                submoduleCfg: [],
+                                userRemoteConfigs: [[credentialsId: 'StashKey', url: "${GIT_URL2}"]]
+                                ]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        stage("Install") {
+            parallel {
+                stage("Backend") {
+                    steps{
+                        container('php72') {
+                            ws(WS1) {
+                                sh 'curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer'
+                                sh 'composer install --no-suggest --ignore-platform-reqs --no-progress'
+                            }
+                        }
+                    }
+                }
+                stage("Client") {
+                    steps{
+                        container('node') {
+                            ws(WS2) {
+                                sh 'npm install'
+                                sh 'npm run build'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Lint') {
+            parallel {
+                stage('Psalm'){
+                    steps {
+                        container('php72') {
+                            ws(WS1) {
+                                sh 'cd ${WS1} ; pwd ; ls -al .. ; vendor/bin/psalm'
+                            }
+                        }
+                    }
+                }
+                stage('Phpstan'){
+                    steps {
+                        container('php72') {
+                            ws(WS1) {
+                                sh 'cd ${WS1} ; pwd ; ls -al .. ; vendor/bin/phpstan analyse src'
+                            }
+                        }
+                    }
+                }
+                stage('PhpCS'){
+                    steps {
+                        container('php72') {
+                            ws(WS1) {
+                                sh 'cd ${WS1} ; pwd ; ls -al .. ; vendor/bin/phpcs src/'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Unit Tests') {
+            steps {
+                container('php72') {
+                    ws(WS1) {
+                        sh 'vendor/bin/phpunit tests/'
+                    }
+                }
+            }
+        }
+        stage("Start Services") {
+            parallel {
+                stage("Backend") {
+                    steps{
+                        container('php72apache') {
+                            ws(WS1) {
+                                sh '''
+                                echo '127.0.0.1       fred-poc.mgcorp.co' >> /etc/hosts
+                                rm -rf /var/www/html /var/www/vendor /var/www/html/.htaccess
+                                ln -s $PWD/src /var/www/html
+                                ln -s $PWD/vendor /var/www/vendor
+                                ln -s $PWD/apache/.htaccess /var/www/html/.htaccess
+                                nohup apache/entrypoint.sh &
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage("Client") {
+                    steps{
+                        container('nginx') {
+                            ws(WS2) {
+                                sh '''
+                                echo '127.0.0.1       fred-poc.mgcorp.co' >> /etc/hosts
+                                rm -rf /usr/share/nginx/html
+                                ln -s $PWD/public /usr/share/nginx/html
+                                nohup nginx -g 'daemon off;' &
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Selenium') {
+            steps {
+                container('php72') {
+                    ws(WS1) {
+                        sh 'vendor/bin/codecept run acceptance --steps'
+                    }
+                }
+            }
+        }
+        stage('Build and Push Containers') {
+            when {
+                environment name: 'BRANCH', value: '*/master'
+            }
+            parallel {
+                stage('Login to Registry'){
+                    steps {
+                        container('jnlp') {
+                            sh 'mkdir ~/.docker'
+                            configFileProvider([configFile(fileId: 'eba2ecc7-5f2c-47cf-ae2c-0beb9dc1dc3d', targetLocation: '/home/jenkins/.docker/config.json')]) {
+                                sh 'echo "Credential config added."'
+                            }
+                        }
+                    }
+                }
+                stage('Client'){
+                    steps {
+                        container('jnlp') {
+                            ws(WS2) {
+                                sh 'docker build -t harbor.mgcorp.co/devops/xmpl-api-client:latest .'
+                                sh 'docker tag harbor.mgcorp.co/devops/xmpl-api-client:latest harbor.mgcorp.co/devops/xmpl-api-client:$BUILD_NUMBER'
+                                sh 'docker push harbor.mgcorp.co/devops/xmpl-api-client:$BUILD_NUMBER'
+                                sh 'docker push harbor.mgcorp.co/devops/xmpl-api-client:latest'
+                            }
+                        }
+                    }
+                }
+                stage('Backend') {
+                    steps {
+                        container('jnlp') {
+                            ws(WS1) {
+                                sh 'docker build -t harbor.mgcorp.co/devops/xmpl-api-backend:latest .'
+                                sh 'docker tag harbor.mgcorp.co/devops/xmpl-api-backend:latest harbor.mgcorp.co/devops/xmpl-api-backend:$BUILD_NUMBER'
+                                sh 'docker push harbor.mgcorp.co/devops/xmpl-api-backend:$BUILD_NUMBER'
+                                sh 'docker push harbor.mgcorp.co/devops/xmpl-api-backend:latest'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            when {
+                expression {
+                BRANCH == '*/master' && DEPLOY == 'true'
+                }
+            }
+            steps {
+                sh '''
+                    curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+                    chmod +x ./kubectl
+                    mv ./kubectl /usr/local/bin/kubectl
+                    '''
+                sh "sed -i 's/TAG/'''${BUILD_NUMBER}'''/g' ${DEPLOYCONFIG}"
+                withKubeConfig(credentialsId: '72e983d7-f6b8-494f-9000-ffd5282325c4', serverUrl: 'https://mtl-doc1.mgcorp.co:8443/k8s/clusters/c-mqh5j') {
+                    sh 'kubectl apply -f ${DEPLOYCONFIG}'
+                }
+            }
+        }
+    }
+}
