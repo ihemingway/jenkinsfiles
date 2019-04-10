@@ -35,6 +35,7 @@ spec:
     }
     environment {
         CODE_WS = "/home/jenkins/${PRODUCT}"
+        PRODUCT = "${PRODUCT}"
         NODE = "${params.NODE}"
         BRANCH = "${params.BRANCH}"
         ENVIRONMENT = "${params.ENVIRONMENT}"
@@ -114,6 +115,8 @@ spec:
                         git clone https://stash.mgcorp.co/scm/lt/mgdeploy.git
                         pip3 install --upgrade ./mgdeploy
                         rm -rf mgdeploy .git
+                        echo
+                        echo "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"
                         echo
                         echo '##########################################'
                     '''
