@@ -119,6 +119,8 @@ spec:
                         echo "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"
                         echo
                         echo '##########################################'
+                        ls -al /home/jenkins/manifest ${CODE_WS} /home/jenkins/manifest/${PRODUCT}
+
                     '''
                     withCredentials([string(credentialsId: '222f1d34-e4fc-49f6-a86d-4ada2286906c', variable: 'VAULT_TOKEN')]) {
                         sh '''
