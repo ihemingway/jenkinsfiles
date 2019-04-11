@@ -122,7 +122,7 @@ spec:
                     '''
                     withCredentials([string(credentialsId: '222f1d34-e4fc-49f6-a86d-4ada2286906c', variable: 'VAULT_TOKEN')]) {
                         sh '''
-                            mgdeploy -e ${ENVIRONMENT} -c "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"
+                            mgdeploy -d -e ${ENVIRONMENT} -c "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"
                         ''' 
                     }
                 }
