@@ -85,21 +85,7 @@ spec:
         stage('Build') {
             steps {
                 ws(CODE_WS) {
-                    sh '''
-                        echo '##########  CONTAINER STATS  #############'
-                        echo
-                        java -version
-                        echo
-                        echo '##########################################' 
-
-                        ### BUILD SPECIFIC ###
-
-                        bash ./build.sh
-
-                        ### END BUILD SPECIFIC ###
-
-                        echo '### DONE! ###'
-                    '''
+                    sh 'bash ./build.sh'
                 }
             }
         }
@@ -110,22 +96,12 @@ spec:
             steps {
                 ws(CODE_WS) {
                     sh '''
-                        echo '##########  CONTAINER STATS  #############'
-                        echo
                         git clone https://stash.mgcorp.co/scm/lt/mgdeploy.git
                         pip3 install --upgrade ./mgdeploy
                         rm -rf mgdeploy .git
-                        echo
-                        echo "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"
-                        echo
-                        echo '##########################################'
-                        ls -al /home/jenkins/manifest ${CODE_WS} /home/jenkins/manifest/${PRODUCT}
-
                     '''
                     withCredentials([string(credentialsId: '222f1d34-e4fc-49f6-a86d-4ada2286906c', variable: 'VAULT_TOKEN')]) {
-                        sh '''
-                            mgdeploy -d -e ${ENVIRONMENT} -c "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"
-                        ''' 
+                        sh 'mgdeploy -e ${ENVIRONMENT} -c "${MANIFEST_WS}/${PRODUCT}/${DEPLOYCONFIG}"' 
                     }
                 }
             }
