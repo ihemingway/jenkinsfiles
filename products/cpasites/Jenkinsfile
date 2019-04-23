@@ -48,7 +48,8 @@ spec:
                         wrap([$class: 'BuildUser']) {
                             office365ConnectorSend color: '05b222',
                                 message: "${JOB_NAME} started by ${BUILD_USER_ID} :: Branch: ${BRANCH} :: Environment: ${ENVIRONMENT}",
-                                webhookUrl: "${TEAMS_HOOK}"
+                                webhookUrl: "${TEAMS_HOOK}",
+                                status: "Started"
                         }
                     }
                 }
@@ -113,12 +114,14 @@ spec:
         success {
             office365ConnectorSend color: '7CFC00',
                 message: "Success! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL} :: Node: ${NODE}",
-                webhookUrl: "${TEAMS_HOOK}"
+                webhookUrl: "${TEAMS_HOOK}",
+                status: "Success!"
         }
         failure {
             office365ConnectorSend color: 'FF0000',
                 message: "FAILED! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL} :: Node: ${NODE}",
-                webhookUrl: "${TEAMS_HOOK}"
+                webhookUrl: "${TEAMS_HOOK}",
+                status: "Failed!"
         }
     }
 }
