@@ -1,0 +1,87 @@
+pipeline {
+    agent {
+        kubernetes {
+            label 'slave'
+            namespace 'jenkins'
+            defaultContainer 'jnlp'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: slave
+  labels:
+    name: slave
+spec:
+  activeDeadlineSeconds: 600
+#  nodeSelector:
+#    kubernetes.io/hostname: ${NODE}
+  containers:
+  - name: jnlp
+    image: harbor.mgcorp.co/devops/ihemingway-jenkins-slave-w-docker:latest
+    tty: true
+    SecurityContext: privileged
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docksock
+  volumes:
+  - name: docksock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
+    environment {
+        MANIFESTS_URL = "ssh://git@stash.mgcorp.co:7999/lt/deployment-manifests.git"
+        VAULT_ADDR = "https://mtl-devops-vault.mgcorp.co:8200"
+        TEAMS_HOOK = "https://outlook.office.com/webhook/ea64b24e-111b-4b31-b1c4-ed67ce8c9ef4@8901d9c6-8b0c-4459-8f7a-df56f23ef9f9/JenkinsCI/24f71ab16f7f4f63a08b76b45c5ab4e0/acc9e43c-a995-47e2-b550-5a5aa2568437"
+        BRANCH = "${params.BRANCH}"
+        ENVIRONMENT = "${params.ENVIRONMENT}"
+        CODE_URL = "${params.REPO}"
+    }
+    stages {
+        stage("Set up environment") {
+            parallel {
+                stage("Pull Manifest") {
+                    steps{
+                        git(
+                            changelog: false,
+                            credentialsId: 'StashKey',
+                            poll: false,
+                            url: "${MANIFESTS_URL}"
+                        )
+                        sh "echo $PWD; ls -al"
+                    }
+                }
+                stage("Pull Code") {
+                    steps{
+                        git(
+                            changelog: false,
+                            credentialsId: 'StashKey',
+                            poll: false,
+                            url: "${MANIFESTS_URL}"
+                        )
+                        sh "echo $PWD; ls -al"
+                    }
+                }
+            }
+        stage("Template"){
+            steps{
+                //blah blah
+            }
+        }
+    }
+    post {
+        success {
+            office365ConnectorSend color: '7CFC00',
+                message: "Success! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL} :: Node: ${NODE}",
+                webhookUrl: "${TEAMS_HOOK}",
+                status: "Success!"
+        }
+        failure {
+            office365ConnectorSend color: 'FF0000',
+                message: "FAILED! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL} :: Node: ${NODE}",
+                webhookUrl: "${TEAMS_HOOK}",
+                status: "Failed!"
+        }
+    }
+}
