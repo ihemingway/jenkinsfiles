@@ -1,0 +1,157 @@
+pipeline {
+    agent {
+        kubernetes {
+            label 'slave'
+            namespace 'jenkins'
+            defaultContainer 'jnlp'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: slave
+  labels:
+    name: slave
+spec:
+  activeDeadlineSeconds: 600
+  containers:
+  - name: jnlp
+    image: harbor.mgcorp.co/devops/ihemingway-jenkins-slave-w-docker:latest
+    tty: true
+    SecurityContext: privileged
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docksock
+  - name: primary
+    image: harbor.mgcorp.co/devops/primarybuild
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: docksock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
+    environment {
+        VAULT_ADDR = "https://mtl-devops-vault.mgcorp.co:8200"
+        TEAMS_HOOK = "https://outlook.office.com/webhook/ea64b24e-111b-4b31-b1c4-ed67ce8c9ef4@8901d9c6-8b0c-4459-8f7a-df56f23ef9f9/JenkinsCI/24f71ab16f7f4f63a08b76b45c5ab4e0/acc9e43c-a995-47e2-b550-5a5aa2568437"
+        BRANCH = "${params.BRANCH}"
+        ENVIRONMENT = "${params.ENVIRONMENT}"
+        PRODUCT = "wicked"
+        PROJPROD = "paywic.${PRODUCT}"
+        //PRODUCT = "spartan-brazzers-v3" //sed this
+        //PROJPROD = "paybz.${PRODUCT}" //and this
+        VAULT_TOKEN = "${PROJPROD}_vault_token"
+        CICADA_URL = "https://stash.mgcorp.co/scm/lt/cicada.git"
+        CODE_URL = "${params.REPO}"
+        CODE_WS = "/home/jenkins/${PRODUCT}"
+        MANIFESTS_URL = "ssh://git@stash.mgcorp.co:7999/lt/deployment-manifests.git"
+        MANIFESTS_WS = "/home/jenkins/deployment-manifests"
+    }
+    stages {
+        stage("Set up environment") {
+            parallel {
+                stage("Pull Manifest") {
+                    steps {
+                        ws("deployment-manifests"){
+                            checkout(
+                                [$class: 'GitSCM',
+                                branches: [[name: "*/master"]],
+                                doGenerateSubmoduleConfigurations: false,
+                                extensions: [[$class: 'CloneOption', depth: 1, noTags: true, reference: '', shallow: true]],
+                                submoduleCfg: [],
+                                userRemoteConfigs: [[credentialsId: 'StashKey', url: "${MANIFESTS_URL}"]]
+                                ]
+                            )
+                            sh "echo $PWD; ls -al"
+                        }
+                    }
+                }
+                stage("Pull Code") {
+                   steps{
+                        ws(PRODUCT) {
+                            checkout(
+                                [$class: 'GitSCM',
+                                branches: [[name: "${BRANCH}"]],
+                                doGenerateSubmoduleConfigurations: false,
+                                extensions: [[$class: 'CloneOption', noTags: false,  shallow: false]],
+                                userRemoteConfigs: [[credentialsId: 'StashKey', url: "${CODE_URL}"]]
+                                ]
+                            )
+                            sh "echo $PWD; ls -al; ls -al /home/jenkins"
+                        }
+                    }
+                }
+                stage("Install Cicada") {
+                    steps{
+                        container("primary"){
+                            ws("cicada") {
+                                sh "whoami"
+                                checkout(
+                                    [$class: 'GitSCM',
+                                    branches: [[name: "*/master"]],
+                                    doGenerateSubmoduleConfigurations: false,
+                                    extensions: [[$class: 'CloneOption', depth: 1, noTags: true, reference: '', shallow: true]],
+                                    submoduleCfg: [],
+                                    userRemoteConfigs: [[credentialsId: 'StashKey', url: "${CICADA_URL}"]]
+                                    ]
+                                )
+                                sh "whoami ; echo $PWD; pip3 install ."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage("Build"){
+            steps{
+                container("primary") {
+                    //ws("/home/jenkins") {
+                    //blah blah
+                    sh """PYTHONIOENCODING=utf8 mgbuild -c /home/jenkins/deployment-manifests/${PROJPROD}/deployconfig.yaml -e "${ENVIRONMENT}" -d"""
+                    //}
+                }
+            }
+        }
+        stage("Package"){
+            steps{
+                container("primary") {
+                    //ws("/home/jenkins") {
+                    //blah blah
+                    sh """cd /home/jenkins && PYTHONIOENCODING=utf8 mgpackage -c /home/jenkins/deployment-manifests/${PROJPROD}/deployconfig.yaml -e "${ENVIRONMENT}" -d"""
+                    //}
+                }
+            }
+        }
+        stage("Deploy"){
+            steps{
+                container("primary") {
+                    //ws("/home/jenkins") {
+                    //blah blah
+                    withCredentials([string(credentialsId: VAULT_TOKEN, variable: 'VAULT_TOKEN')]) {
+                        sh """echo $PWD; cd /home/jenkins; PYTHONIOENCODING=utf8 mgdeploy -c /home/jenkins/deployment-manifests/${PROJPROD}/deployconfig.yaml -e "${ENVIRONMENT}" -p `ls -1t atomic* | head -n 1` -d"""
+                    }
+                    //}
+                }
+            }
+        }
+    }
+    post {
+        success {
+            office365ConnectorSend color: '7CFC00',
+                message: "Success! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL}",
+                webhookUrl: "${TEAMS_HOOK}",
+                status: "Success!"
+        }
+        failure {
+            office365ConnectorSend color: 'FF0000',
+                message: "FAILED! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${params.REPO}",
+                webhookUrl: "${TEAMS_HOOK}",
+                status: "Failed!"
+        }
+        always {
+            sh "echo Done."
+        }
+    }
+}
