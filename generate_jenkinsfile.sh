@@ -14,7 +14,7 @@ fi
 #cd jenkinsfiles
 mkdir -p ${PROJECT}
 cp jenkinsfile-template ${PROJECT}/Jenkinsfile-${PRODUCT}
-sed -i -e "s/%%PRODUCT%%/'''${PRODUCT}'''/g" -e "s/%%PROJECT%%/'''${PROJECT}'''/g" ${PROJECT}/Jenkinsfile-${PRODUCT}
+sed -i -e "s/%%PRODUCT%%/${PRODUCT}/g" -e "s/%%PROJECT%%/${PROJECT}/g" ${PROJECT}/Jenkinsfile-${PRODUCT}
 git add -A .
 git commit -m "Autogen by ${0} on `hostname` by ${AD}"
 git push origin master
