@@ -140,13 +140,13 @@ spec:
     post {
         success {
             office365ConnectorSend color: '7CFC00',
-                message: "Success! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL}",
+                message: "Success! Branch/Tag: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${CODE_URL}",
                 webhookUrl: "${TEAMS_HOOK}",
                 status: "Success!"
         }
         failure {
             office365ConnectorSend color: 'FF0000',
-                message: "FAILED! Branch: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${params.REPO}",
+                message: "FAILED! Branch/Tag: ${BRANCH} :: Environment: ${ENVIRONMENT} :: Repo: ${params.REPO}",
                 webhookUrl: "${TEAMS_HOOK}",
                 status: "Failed!"
         }
