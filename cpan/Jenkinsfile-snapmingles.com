@@ -29,10 +29,10 @@ spec:
         VAULT_ADDR = "https://mtl-devops-vault.mgcorp.co:8200"
         BRANCH = "${params.BRANCH}"
         ENVIRONMENT = "${params.ENVIRONMENT}"
-        //PRODUCT = "snapmingles.com"
-        //PROJPROD = "cpan.${PRODUCT}"
-        PRODUCT = "spartan-brazzers-v3" //sed this
-        PROJPROD = "paybz.${PRODUCT}" //and this
+        PRODUCT = "snapmingles.com"
+        PROJPROD = "cpan.${PRODUCT}"
+        //PRODUCT = "spartan-brazzers-v3" //sed this
+        //PROJPROD = "paybz.${PRODUCT}" //and this
         VAULT_TOKEN = "${PROJPROD}_vault_token"
         CODE_URL = "${params.REPO}"
         CODE_WS = "/home/jenkins/${PRODUCT}"
