@@ -53,7 +53,6 @@ spec:
                         ws(PRODUCT) {
                             sh 'echo $PWD'
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
-                            sh "mkdir build"
                             //pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
                             sh 'echo $PWD ; ls -al'
                         }
