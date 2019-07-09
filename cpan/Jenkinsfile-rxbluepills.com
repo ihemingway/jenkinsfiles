@@ -52,8 +52,8 @@ spec:
                    steps{
                         ws(PRODUCT) {
                             sh 'echo $PWD'
-                            pullCode()
-                            pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git")
+                            pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
+                            pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
                             sh 'echo $PWD ; ls -al'
                         }
                     }
