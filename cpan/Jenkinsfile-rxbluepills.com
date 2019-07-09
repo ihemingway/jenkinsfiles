@@ -51,7 +51,9 @@ spec:
                 stage("Pull Code") {
                    steps{
                         ws(PRODUCT) {
+                            sh 'echo $PWD'
                             pullCode()
+                            sh 'echo $PWD ; ls -al'
                         }
                     }
                 }
