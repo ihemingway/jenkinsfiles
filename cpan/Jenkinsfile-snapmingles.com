@@ -3,6 +3,7 @@
 pipeline {
     agent {
         kubernetes {
+            cloud 'kubernetes-prod'
             label 'slave'
             namespace 'jenkins'
             defaultContainer 'primary'
