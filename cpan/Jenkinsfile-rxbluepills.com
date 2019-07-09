@@ -51,18 +51,11 @@ spec:
                 stage("Pull Code") {
                    steps{
                         ws(PRODUCT) {
-                            sh 'echo $PWD'
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
-                            //pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
-                            sh 'echo $PWD ; ls -al'
                         }
-                        ws(PRODUCT + "/build") {
-                            sh 'echo $PWD'
-                            //pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
-                            //sh "mkdir build"
+                        /*ws(PRODUCT + "/build") {
                             pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
-                            sh 'echo $PWD ; ls -al'
-                        }
+                        }*/
                     }
                 }
                 stage("Install Cicada") {
