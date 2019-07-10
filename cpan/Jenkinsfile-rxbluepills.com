@@ -35,7 +35,7 @@ spec:
         //PROJPROD = "paybz.${PRODUCT}" //and this
         VAULT_TOKEN = "${PROJPROD}_vault_token"
         CODE_URL = "${params.REPO}"
-        CODE_WS = "/home/jenkins/${PRODUCT}"
+        //CODE_WS = "/home/jenkins/${PRODUCT}"
         MANIFESTS_WS = "/home/jenkins/deployment-manifests"
     }
     stages {
@@ -55,6 +55,7 @@ spec:
                         }
                         ws("build") {
                             pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
+                            sh 'echo $PWD; ls -al; ls -al ..'
                         }
                     }
                 }
