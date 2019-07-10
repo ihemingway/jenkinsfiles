@@ -44,6 +44,7 @@ spec:
             parallel {
                 stage("Pull Manifest") {
                     steps {
+                sh 'echo $PWD ; ls -al'
                         ws("deployment-manifests"){
                             pullManifests()
                         }
@@ -52,6 +53,7 @@ spec:
                 stage("Pull Code") {
                    steps{
                         ws(PRODUCT) {
+                sh 'echo $PWD ; ls -al'
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
                         }
                         ws("build") {
@@ -71,6 +73,7 @@ spec:
         }
         stage("Build"){
             steps{
+                sh 'echo $PWD ; ls -al'
                 //ws("/home/jenkins") {
                     cicadaBuild()
                 //}
