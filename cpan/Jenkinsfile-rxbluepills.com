@@ -36,7 +36,7 @@ spec:
         VAULT_TOKEN = "${PROJPROD}_vault_token"
         CODE_URL = "${params.REPO}"
         //CODE_WS = "/home/jenkins/${PRODUCT}"
-        MANIFESTS_WS = "/home/jenkins/deployment-manifests"
+        //MANIFESTS_WS = "/home/jenkins/deployment-manifests"
     }
     stages {
         stage("Set up environment") {
@@ -44,7 +44,7 @@ spec:
                 stage("Pull Manifest") {
                     steps {
                 sh 'echo $PWD ; ls -al'
-                        ws(WORKSPACE + "deployment-manifests"){
+                        ws(WORKSPACE + "/deployment-manifests"){
                             pullManifests()
                         }
                     }
@@ -55,7 +55,7 @@ spec:
                 sh 'echo $PWD ; ls -al'
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
                         }
-                        ws("build") {
+                        ws(WORKSPACE +"/build") {
                             pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
                             sh 'echo $PWD; ls -al; ls -al ..'
                         }
@@ -63,7 +63,7 @@ spec:
                 }
                 stage("Install Cicada") {
                     steps{
-                        ws(WORKSPACE + "cicada") {
+                        ws(WORKSPACE + "/cicada") {
                             pullCicada()
                         }
                     }
