@@ -3,7 +3,6 @@
 pipeline {
     agent {
         kubernetes {
-            customWorkspace '/home/jenkins/ws'
             cloud 'kubernetes-prod'
             label 'slave'
             namespace 'jenkins'
@@ -45,14 +44,14 @@ spec:
                 stage("Pull Manifest") {
                     steps {
                 sh 'echo $PWD ; ls -al'
-                        ws("deployment-manifests"){
+                        ws(WORKSPACE + "deployment-manifests"){
                             pullManifests()
                         }
                     }
                 }
                 stage("Pull Code") {
                    steps{
-                        ws(PRODUCT) {
+                        ws(WORKSPACE + "/" + PRODUCT) {
                 sh 'echo $PWD ; ls -al'
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
                         }
@@ -64,7 +63,7 @@ spec:
                 }
                 stage("Install Cicada") {
                     steps{
-                        ws("cicada") {
+                        ws(WORKSPACE + "cicada") {
                             pullCicada()
                         }
                     }
