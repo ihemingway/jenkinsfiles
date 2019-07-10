@@ -70,9 +70,9 @@ spec:
         }
         stage("Build"){
             steps{
-                ws("/home/jenkins") {
+                //ws("/home/jenkins") {
                     cicadaBuild()
-                }
+                //}
             }
         }
         stage("Package"){
