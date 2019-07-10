@@ -53,7 +53,7 @@ spec:
                         ws(PRODUCT) {
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
                         }
-                        ws(PRODUCT + "/build") {
+                        ws("build") {
                             pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
                         }
                     }
