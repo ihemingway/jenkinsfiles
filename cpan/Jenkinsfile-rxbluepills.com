@@ -3,6 +3,7 @@
 pipeline {
     agent {
         kubernetes {
+            customWorkspace '/home/jenkins/ws'
             cloud 'kubernetes-prod'
             label 'slave'
             namespace 'jenkins'
