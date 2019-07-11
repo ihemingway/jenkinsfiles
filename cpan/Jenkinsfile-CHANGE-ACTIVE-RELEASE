@@ -1,0 +1,75 @@
+@Library('shared@master') _
+
+def LABEL = "slave-${UUID.randomUUID().toString()}"
+def DOMAIN = params.DOMAIN
+def RELEASE = params.RELEASE
+def ENVIRONMENT = params.ENVIRONMENT
+
+/*def REQUIRED_BRANCH = "master"
+def BRANCH = env.BRANCH
+if (BRANCH != REQUIRED_BRANCH) {
+    currentBuild.result = "SUCCESS"
+    echo "Branch is ${BRANCH} not required branch ${REQUIRED_BRANCH}"
+    return
+}*/
+
+pipeline {
+    agent {
+        kubernetes {
+            cloud 'kubernetes-prod'
+            label "${LABEL}"
+            namespace 'jenkins'
+            defaultContainer 'jnlp'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: slave
+  labels:
+    name: slave
+spec:
+  activeDeadlineSeconds: 600
+  containers:
+  - name: jnlp
+    image: harbor.mgcorp.co/devops/ihemingway-jenkins-slave-w-docker:latest
+    tty: true
+"""
+        }
+    }
+    environment {
+        //DOMAIN = "${params.DOMAIN}"
+        PRODUCT = "cpan.${DOMAIN}"
+        //RELEASE = "${params.RELEASE}"
+        //ENVIRONMENT = "${params.ENVIRONMENT}"
+        VAULT_ADDR = "https://mtl-devops-vault.mgcorp.co:8200"
+        VAULT_TOKEN = credentials("cpan.${DOMAIN}_vault_token")
+    }
+    stages {
+        stage("Set up environment") {
+            parallel {
+                stage("Pull Manifest") {
+                    steps {
+                        ws(WORKSPACE + "/deployment-manifests"){
+                            pullManifests()
+                        }
+                    }
+                }
+                stage("Install Cicada") {
+                    steps{
+                        ws(WORKSPACE + "/cicada") {
+                            pullCicada()
+                        }
+                    }
+                }
+            }
+        }
+        stage("Change release") {
+            steps {
+                sh """
+                #!/bin/bash -x
+                mgupdaterelease -c "deployment-manifests/${PRODUCT}/deployconfig.yaml" -e "${ENVIRONMENT}" -r ${RELEASE}
+                """
+            }            
+        }
+    }
+}
