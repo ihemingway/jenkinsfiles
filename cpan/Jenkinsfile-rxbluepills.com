@@ -67,7 +67,9 @@ spec:
         }
         stage("Build"){
             steps{
-                cicadaBuild()
+                cicadaBuild(
+                    debug: true
+                )
             }
         }
         stage("Package"){
@@ -81,7 +83,7 @@ spec:
             }
         }
     }
-    post {
+    /*post {
         success {
             notifyDevOps(
                 status: "Success!",
@@ -105,5 +107,5 @@ spec:
         always {
             sh "echo Done."
         }
-    }
+    }*/
 }
