@@ -68,7 +68,7 @@ spec:
         stage("Build"){
             steps{
                 cicadaBuild(
-                    debug: false
+                    debug: true
                 )
             }
         }
