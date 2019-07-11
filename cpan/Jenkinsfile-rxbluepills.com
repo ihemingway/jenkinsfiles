@@ -35,15 +35,12 @@ spec:
         //PROJPROD = "paybz.${PRODUCT}" //and this
         VAULT_TOKEN = "${PROJPROD}_vault_token"
         CODE_URL = "${params.REPO}"
-        //CODE_WS = "/home/jenkins/${PRODUCT}"
-        //MANIFESTS_WS = "/home/jenkins/deployment-manifests"
     }
     stages {
         stage("Set up environment") {
             parallel {
                 stage("Pull Manifest") {
                     steps {
-                sh 'echo $PWD ; ls -al'
                         ws(WORKSPACE + "/deployment-manifests"){
                             pullManifests()
                         }
@@ -52,12 +49,10 @@ spec:
                 stage("Pull Code") {
                    steps{
                         ws(WORKSPACE + "/" + PRODUCT) {
-                sh 'echo $PWD ; ls -al'
                             pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
                         }
                         ws(WORKSPACE +"/build") {
                             pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
-                            sh 'echo $PWD; ls -al; ls -al ..'
                         }
                     }
                 }
@@ -72,10 +67,7 @@ spec:
         }
         stage("Build"){
             steps{
-                sh 'echo $PWD ; ls -al'
-                //ws("/home/jenkins") {
-                    cicadaBuild()
-                //}
+                cicadaBuild()
             }
         }
         stage("Package"){
