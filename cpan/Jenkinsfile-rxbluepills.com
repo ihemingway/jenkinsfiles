@@ -87,9 +87,17 @@ spec:
                 status: "Success!",
                 color: "7CFC00"
             )
+            notifyUsers(
+                status: "Success!",
+                color: "7CFC00"
+            )
         }
         failure {
             notifyDevOps(
+                status: "Failed!",
+                color: "FF0000"
+            )
+            notifyUsers(
                 status: "Failed!",
                 color: "FF0000"
             )
