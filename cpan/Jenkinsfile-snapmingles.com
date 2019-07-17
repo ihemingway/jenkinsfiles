@@ -35,29 +35,35 @@ spec:
         //PROJPROD = "paybz.${PRODUCT}" //and this
         VAULT_TOKEN = "${PROJPROD}_vault_token"
         CODE_URL = "${params.REPO}"
-        CODE_WS = "/home/jenkins/${PRODUCT}"
-        MANIFESTS_WS = "/home/jenkins/deployment-manifests"
+        //CODE_WS = "/home/jenkins/${PRODUCT}"
+        //MANIFESTS_WS = "/home/jenkins/deployment-manifests"
     }
     stages {
         stage("Set up environment") {
             parallel {
                 stage("Pull Manifest") {
                     steps {
-                        ws("deployment-manifests"){
+                sh 'echo $PWD ; ls -al'
+                        ws(WORKSPACE + "/deployment-manifests"){
                             pullManifests()
                         }
                     }
                 }
                 stage("Pull Code") {
                    steps{
-                        ws(PRODUCT) {
-                            pullCode()
+                        ws(WORKSPACE + "/" + PRODUCT) {
+                sh 'echo $PWD ; ls -al'
+                            pullCode(repo: "${CODE_URL}", branch: "${BRANCH}")
+                        }
+                        ws(WORKSPACE +"/build") {
+                            pullCode(repo: "ssh://git@stash.mgcorp.co:7999/cpan/build.git", branch: "master")
+                            sh 'echo $PWD; ls -al; ls -al ..'
                         }
                     }
                 }
                 stage("Install Cicada") {
                     steps{
-                        ws("cicada") {
+                        ws(WORKSPACE + "/cicada") {
                             pullCicada()
                         }
                     }
@@ -66,7 +72,10 @@ spec:
         }
         stage("Build"){
             steps{
-                cicadaBuild()
+                sh 'echo $PWD ; ls -al'
+                //ws("/home/jenkins") {
+                    cicadaBuild()
+                //}
             }
         }
         stage("Package"){
@@ -86,9 +95,17 @@ spec:
                 status: "Success!",
                 color: "7CFC00"
             )
+            notifyUsers(
+                status: "Success!",
+                color: "7CFC00"
+            )
         }
         failure {
             notifyDevOps(
+                status: "Failed!",
+                color: "FF0000"
+            )
+            notifyUsers(
                 status: "Failed!",
                 color: "FF0000"
             )
